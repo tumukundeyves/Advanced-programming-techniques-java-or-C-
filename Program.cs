@@ -1,58 +1,102 @@
 ﻿using System;
 using System.Collections.Generic;
 
-interface Operation
+namespace Delegates_and_Exit_Command
 {
-    string Perform();
-}
-
-class SumOperation : Operation
-{
-    public string Perform()
+    class Program
     {
-        int a = int.Parse(Console.ReadLine());
-        int b = int.Parse(Console.ReadLine());
-        return (a + b).ToString();
-    }
-}
+        static bool runs = true;
 
-class DifOperation : Operation
-{
-    public string Perform()
-    {
-        int a = int.Parse(Console.ReadLine());
-        int b = int.Parse(Console.ReadLine());
-        return (a - b).ToString();
-    }
-}
-
-internal class Program
-{
-    static bool runs = true;
-
-    private static void Main(string[] args)
-    {
-        var commands = new Dictionary<string, Operation>
+        static void Main(string[] args)
         {
-            { "sum", new SumOperation() },
-            { "dif", new DifOperation() }
-        };
+            InputProvider input = () => Console.ReadLine();
+            OnResult result = (s) => Console.WriteLine(s);
 
-        while (runs)
+            var commands = new Dictionary<string, Operation>
+            {
+                { "sum", new SumOperation(input, result) },
+                { "dif", new DifOperation(input, result) },
+                { "exit", new ExitOperation(() => runs = false, result) }
+            };
+
+            while (runs)
+            {
+                Console.Write("Enter command (sum/dif/exit): ");
+                string command = Console.ReadLine();
+
+                if (!string.IsNullOrEmpty(command) && commands.ContainsKey(command))
+                {
+                    commands[command].Perform();
+                }
+                else
+                {
+                    Console.WriteLine("Unknown command");
+                }
+            }
+        }
+    }
+
+    public delegate string InputProvider();
+    public delegate void OnResult(string result);
+
+    interface Operation
+    {
+        void Perform();
+    }
+
+    class SumOperation : Operation
+    {
+        private InputProvider input;
+        private OnResult onResult;
+
+        public SumOperation(InputProvider input, OnResult onResult)
         {
-            string command = Console.ReadLine();
-            if (command == "exit")
-            {
-                runs = false;
-            }
-            else if (!string.IsNullOrEmpty(command) && commands.ContainsKey(command))
-            {
-                Console.WriteLine(commands[command].Perform());
-            }
-            else
-            {
-                Console.WriteLine("Unknown command");
-            }
+            this.input = input;
+            this.onResult = onResult;
+        }
+
+        public void Perform()
+        {
+            int a = int.Parse(input());
+            int b = int.Parse(input());
+            onResult((a + b).ToString());
+        }
+    }
+
+    class DifOperation : Operation
+    {
+        private InputProvider input;
+        private OnResult onResult;
+
+        public DifOperation(InputProvider input, OnResult onResult)
+        {
+            this.input = input;
+            this.onResult = onResult;
+        }
+
+        public void Perform()
+        {
+            int a = int.Parse(input());
+            int b = int.Parse(input());
+            onResult((a - b).ToString());
+        }
+    }
+
+    class ExitOperation : Operation
+    {
+        private Action onExit;
+        private OnResult onResult;
+
+        public ExitOperation(Action exitAction, OnResult resultAction)
+        {
+            this.onExit = exitAction;
+            this.onResult = resultAction;
+        }
+
+        public void Perform()
+        {
+            onExit();
+            onResult("Program end");
         }
     }
 }
